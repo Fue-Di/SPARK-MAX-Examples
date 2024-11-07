@@ -11,41 +11,53 @@ import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.revrobotics.CANSparkMax;
 import com.revrobotics.RelativeEncoder;
-import com.revrobotics.CANSparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
 
 public class Robot extends TimedRobot {
-  private Joystick m_stick;
+  private Joystick joystick;
   private static final int deviceID = 1;
-  private CANSparkMax m_motor;
-  private RelativeEncoder m_encoder;
+  private SparkMax motor;
+  private RelativeEncoder encoder;
 
   @Override
   public void robotInit() {
-    // initialize SPARK MAX
-    m_motor = new CANSparkMax(deviceID, MotorType.kBrushless);
+    // Initialize SPARK MAX with a brushless and a CAN ID of 1
+    motor = new SparkMax(deviceID, MotorType.kBrushless);
 
+    // Create empty config to be able to restore defaults on the SPARK MAX
+    SparkMaxConfig emptyConfig = new SparkMaxConfig();
     /**
-     * The RestoreFactoryDefaults method can be used to reset the configuration parameters
-     * in the SPARK MAX to their factory default state. If no argument is passed, these
-     * parameters will not persist between power cycles
+     * Call the configure function to:
+     *    - Apply any settings you set
+     *    - Restore the SPARK MAX factory default values
+     *    - Save parameters across power cycles  
      */
-    m_motor.restoreFactoryDefaults();
+    motor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
 
     /**
     * In order to read encoder values an encoder object is created using the 
-    * getEncoder() method from an existing CANSparkMax object
+    * getEncoder() method from an existing SparkMax object
     */
-    m_encoder = m_motor.getEncoder();
+    encoder = motor.getEncoder();
 
-    m_stick = new Joystick(0);
+    /**
+     * Setup Smartdashboard to show default values on init.
+     */
+    SmartDashboard.putNumber("Encoder Position", 0);
+    SmartDashboard.putNumber("Encoder Velocity", 0);
+
+    joystick = new Joystick(0);
   }
 
   @Override
   public void teleopPeriodic() {
-    // set the motor output based on jostick position
-    m_motor.set(m_stick.getY());
+    // Set the motor output based on jostick position
+    motor.set(joystick.getY());
 
     /**
      * Encoder position is read from a RelativeEncoder object by calling the
@@ -53,7 +65,7 @@ public class Robot extends TimedRobot {
      * 
      * GetPosition() returns the position of the encoder in units of revolutions
      */
-    SmartDashboard.putNumber("Encoder Position", m_encoder.getPosition());
+    SmartDashboard.putNumber("Encoder Position", encoder.getPosition());
 
     /**
      * Encoder velocity is read from a RelativeEncoder object by calling the
@@ -61,6 +73,6 @@ public class Robot extends TimedRobot {
      * 
      * GetVelocity() returns the velocity of the encoder in units of RPM
      */
-    SmartDashboard.putNumber("Encoder Velocity", m_encoder.getVelocity());
+    SmartDashboard.putNumber("Encoder Velocity", encoder.getVelocity());
   }
 }
