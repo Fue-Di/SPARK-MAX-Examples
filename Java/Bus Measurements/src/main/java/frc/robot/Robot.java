@@ -7,12 +7,14 @@
 
 package frc.robot;
 
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
 
 /**
  * This sample program shows how to read basic bus measurements from the SparkMax
@@ -24,20 +26,20 @@ public class Robot extends TimedRobot {
    */
   private static final int deviceID = 1;
   private static final MotorType motorType = MotorType.kBrushless;
-  private CANSparkMax m_motor;
+  private SparkMax motor;
 
   /**
    * A single joystick will be used to control motor outputs when the robot is 
    * enabled.
    */
   private static final int kJoystickPort = 0;
-  private Joystick m_joystick;
+  private Joystick joystick;
 
   @Override
   public void robotInit() {
-    m_motor = new CANSparkMax(deviceID, motorType);
+    motor = new SparkMax(deviceID, motorType);
 
-    m_joystick = new Joystick(kJoystickPort);
+    joystick = new Joystick(kJoystickPort);
   }
 
   @Override
@@ -47,10 +49,10 @@ public class Robot extends TimedRobot {
      * This includes bus voltage (V), output current (A), Applied Output 
      * (duty cycle), and motor temperature (C)
      */
-    double busVoltage = m_motor.getBusVoltage();
-    double current = m_motor.getOutputCurrent();
-    double appliedOut = m_motor.getAppliedOutput();
-    double temperature = m_motor.getMotorTemperature();
+    double busVoltage = motor.getBusVoltage();
+    double current = motor.getOutputCurrent();
+    double appliedOut = motor.getAppliedOutput();
+    double temperature = motor.getMotorTemperature();
 
     // Open SmartDashboard when your program is running to see the values
     SmartDashboard.putNumber("Bus Voltage", busVoltage);
@@ -61,6 +63,6 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
-    m_motor.set(m_joystick.getY());
+    motor.set(joystick.getY());
   }
 }
