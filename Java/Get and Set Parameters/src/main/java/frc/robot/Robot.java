@@ -12,17 +12,24 @@ import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 import com.revrobotics.REVLibError;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+
 
 /**
  * This is a demo program showing the use of the CANSparkMax class, specifically
  * it contains the code necessary to operate a robot with tank drive.
  */
 public class Robot extends TimedRobot {
-  private Joystick m_stick;
+  private Joystick stick;
   private static final int deviceID = 1;
-  private CANSparkMax m_motor;
+  private static final double positionConvFactorDefault = 1.0f;
+  private SparkMax motor;
+  private SparkMaxConfig motorConfig;
 
   @Override
   public void robotInit() {
@@ -30,58 +37,51 @@ public class Robot extends TimedRobot {
      * deviceID is the CAN ID of the SPARK MAX you are using.
      * Change to match your setup
      */
-    m_motor = new CANSparkMax(deviceID, MotorType.kBrushless);
+    motor = new SparkMax(deviceID, MotorType.kBrushless);
+    
+    // Initialize SPARK MAX Configurator to hold our motor settings
+    motorConfig = new SparkMaxConfig();
 
-    /**
-     * The restoreFactoryDefaults method can be used to reset the configuration parameters
-     * in the SPARK MAX to their factory default state. If no argument is passed, these
-     * parameters will not persist between power cycles
-     */
-    m_motor.restoreFactoryDefaults();
+    // Modify generic motor parameters
+    motorConfig
+      .idleMode(IdleMode.kCoast)
+      .inverted(false);
 
-    /**
-     * Parameters can be set by calling the appropriate Set method on the CANSparkMax object
-     * whose properties you want to change
-     * 
-     * Set methods will return one of three REVLibError values which will let you know if the 
-     * parameter was successfully set:
-     *  REVLibError.kOk
-     *  REVLibError.kError
-     *  REVLibError.kTimeout
-     */
-    if(m_motor.setIdleMode(CANSparkMax.IdleMode.kCoast) != REVLibError.kOk){
+    // Modify Encoder Port specific parameter
+    motorConfig.encoder
+      .positionConversionFactor(positionConvFactorDefault);
+
+    // Restore defaults before applying our changes and saving parameters to SPARK MAX EEPROM.
+    // Store the status to check whether the operation succeeded.
+    REVLibError status = motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    
+    if(status != REVLibError.kOk) {
+      // On Error, display error messages on Smart Dashboard.
       SmartDashboard.putString("Idle Mode", "Error");
-    }
-
-    /**
-     * Similarly, parameters will have a Get method which allows you to retrieve their values
-     * from the controller
-     */
-    if(m_motor.getIdleMode() == CANSparkMax.IdleMode.kCoast) {
-      SmartDashboard.putString("Idle Mode", "Coast");
+      SmartDashboard.putString("Inverted", "Error");
+      SmartDashboard.putString("Position Conversion Factor", "Error");
     } else {
-      SmartDashboard.putString("Idle Mode", "Brake");
+      // On success, read back all the data from the SPARK MAX to display on the Smart Dashboard.
+      if(motor.configAccessor.getIdleMode() == IdleMode.kCoast) {
+        SmartDashboard.putString("Idle Mode", "Coast");
+      } else {
+        SmartDashboard.putString("Idle Mode", "Brake");
+      }
+      SmartDashboard.putBoolean("Inverted", motor.configAccessor.getInverted());
+      SmartDashboard.putNumber("Position Conversion Factor", motor.configAccessor.encoder.getPositionConversionFactor());
     }
 
-    // Set ramp rate to 0
-    if(m_motor.setOpenLoopRampRate(0) != REVLibError.kOk) {
-      SmartDashboard.putString("Ramp Rate", "Error");
-    }
-
-    // read back ramp rate value
-    SmartDashboard.putNumber("Ramp Rate", m_motor.getOpenLoopRampRate());
-
-    m_stick = new Joystick(0);
+    stick = new Joystick(0);
   }
 
   @Override
   public void teleopPeriodic() {
     // Set motor output to joystick value
-    m_motor.set(m_stick.getY());
+    motor.set(stick.getY());
     
-    // periodically read voltage, temperature, and applied output and publish to SmartDashboard
-    SmartDashboard.putNumber("Voltage", m_motor.getBusVoltage());
-    SmartDashboard.putNumber("Temperature", m_motor.getMotorTemperature());
-    SmartDashboard.putNumber("Output", m_motor.getAppliedOutput());
+    // Periodically read voltage, temperature, and applied output and publish to SmartDashboard
+    SmartDashboard.putNumber("Voltage", motor.getBusVoltage());
+    SmartDashboard.putNumber("Temperature", motor.getMotorTemperature());
+    SmartDashboard.putNumber("Output", motor.getAppliedOutput());
   }
 }
