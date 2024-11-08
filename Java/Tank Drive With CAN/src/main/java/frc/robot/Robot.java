@@ -7,56 +7,82 @@
 
 package frc.robot;
 
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 import edu.wpi.first.wpilibj.Joystick;
+import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
 
 public class Robot extends TimedRobot {
-  private DifferentialDrive m_myRobot;
-  private Joystick m_leftStick;
-  private Joystick m_rightStick;
+  private DifferentialDrive myRobot;
+  private Joystick leftStick;
+  private Joystick rightStick;
+  private PS4Controller controller;
   private static final int leftDeviceID = 1; 
   private static final int rightDeviceID = 2;
-  private CANSparkMax m_leftMotor;
-  private CANSparkMax m_rightMotor;
+  private SparkMax leftMotor;
+  private SparkMax rightMotor;
 
   @Override
   public void robotInit() {
   /**
-   * SPARK MAX controllers are intialized over CAN by constructing a CANSparkMax object
+   * SPARK MAX controllers are intialized over CAN by constructing a SparkMax object
    * 
    * The CAN ID, which can be configured using the SPARK MAX Client, is passed as the
    * first parameter
    * 
    * The motor type is passed as the second parameter. Motor type can either be:
-   *  com.revrobotics.CANSparkLowLevel.MotorType.kBrushless
-   *  com.revrobotics.CANSparkLowLevel.MotorType.kBrushed
+   *  com.revrobotics.spark.SparkLowLevel.MotorType.kBrushless
+   *  com.revrobotics.spark.SparkLowLevel.MotorType.kBrushed
    * 
    * The example below initializes four brushless motors with CAN IDs 1 and 2. Change
    * these parameters to match your setup
    */
-    m_leftMotor = new CANSparkMax(leftDeviceID, MotorType.kBrushless);
-    m_rightMotor = new CANSparkMax(rightDeviceID, MotorType.kBrushless);
+    leftMotor = new SparkMax(leftDeviceID, MotorType.kBrushless);
+    rightMotor = new SparkMax(rightDeviceID, MotorType.kBrushless);
 
-    /**
-     * The RestoreFactoryDefaults method can be used to reset the configuration parameters
-     * in the SPARK MAX to their factory default state. If no argument is passed, these
-     * parameters will not persist between power cycles
+
+    /*
+     * Create config with no changes
      */
-    m_leftMotor.restoreFactoryDefaults();
-    m_rightMotor.restoreFactoryDefaults();
+    SparkMaxConfig emptyConfig = new SparkMaxConfig();
 
-    m_myRobot = new DifferentialDrive(m_leftMotor, m_rightMotor);
+    /*
+     * Reset both the left motor and right motor to factory defaults that will not persist over power cycles.  
+     */
+    leftMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    rightMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
-    m_leftStick = new Joystick(0);
-    m_rightStick = new Joystick(1);
+    myRobot = new DifferentialDrive(leftMotor, rightMotor);
+
+    controller = new PS4Controller(0);
+
+    // leftStick = new Joystick(0);
+    // rightStick = new Joystick(1);
+
+    /*
+     * Display Default values to setup SmartDashboard
+     */
+
+     SmartDashboard.putNumber("Left Motor Applied Output", 0.0);
+     SmartDashboard.putNumber("Right Motor Applied Output", 0.0);
   }
 
   @Override
   public void teleopPeriodic() {
-    m_myRobot.tankDrive(m_leftStick.getY(), m_rightStick.getY());
+    myRobot.tankDrive(controller.getLeftY(), controller.getRightY());
+
+    /*
+     * Refresh the applied output data on SmartDashboard
+     */
+    SmartDashboard.putNumber("Left Motor Applied Output", leftMotor.getAppliedOutput());
+    SmartDashboard.putNumber("Right Motor Applied Output", rightMotor.getAppliedOutput());
   }
 }
