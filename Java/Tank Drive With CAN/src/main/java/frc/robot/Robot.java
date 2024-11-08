@@ -13,7 +13,6 @@ import com.revrobotics.spark.SparkBase.PersistMode;
 import com.revrobotics.spark.SparkBase.ResetMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.PS4Controller;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
@@ -22,8 +21,6 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
 public class Robot extends TimedRobot {
   private DifferentialDrive myRobot;
-  private Joystick leftStick;
-  private Joystick rightStick;
   private PS4Controller controller;
   private static final int leftDeviceID = 1; 
   private static final int rightDeviceID = 2;
@@ -63,9 +60,6 @@ public class Robot extends TimedRobot {
     myRobot = new DifferentialDrive(leftMotor, rightMotor);
 
     controller = new PS4Controller(0);
-
-    // leftStick = new Joystick(0);
-    // rightStick = new Joystick(1);
 
     /*
      * Display Default values to setup SmartDashboard
