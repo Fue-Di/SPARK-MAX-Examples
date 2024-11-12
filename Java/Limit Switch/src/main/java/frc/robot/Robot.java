@@ -7,80 +7,114 @@
 
 package frc.robot;
 
+import com.revrobotics.spark.SparkLimitSwitch;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.LimitSwitchConfig.Type;
+
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 
-import com.revrobotics.SparkLimitSwitch;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
-
 public class Robot extends TimedRobot {
-  private Joystick m_stick;
+  private Joystick joystick;
   private static final int deviceID = 1;
-  private CANSparkMax m_motor;
-  private SparkLimitSwitch m_forwardLimit;
-  private SparkLimitSwitch m_reverseLimit;
+  private SparkMax motor;
+  private SparkMaxConfig motorConfig;
+  private SparkLimitSwitch forwardLimit;
+  private SparkLimitSwitch reverseLimit;
 
-  public String kEnable;
-  public String kDisable;
+  private boolean isForwardLimitEnabled;
+  private boolean isReverseLimitEnabled;
+  private Type forwardLimitNormalState;
+  private Type reverseLimitNormalState;
 
   @Override
   public void robotInit() {
-    // initialize SPARK MAX with CAN ID
-    m_motor = new CANSparkMax(deviceID, MotorType.kBrushless);
+    // Setup starting values for limit switches
+    isForwardLimitEnabled = false;
+    isReverseLimitEnabled = false;
+    forwardLimitNormalState = Type.kNormallyOpen;
+    reverseLimitNormalState = Type.kNormallyOpen;
 
-    /**
-     * The RestoreFactoryDefaults method can be used to reset the configuration parameters
-     * in the SPARK MAX to their factory default state. If no argument is passed, these
-     * parameters will not persist between power cycles
-     */
-    m_motor.restoreFactoryDefaults();
+    // Initialize SPARK MAX with CAN ID
+    motor = new SparkMax(deviceID, MotorType.kBrushless);
+
+    // Initialize SPARK MAX Configuration object to hold the changes we want applied
+    motorConfig = new SparkMaxConfig();
 
     /**
      * A SparkLimitSwitch object is constructed using the getForwardLimitSwitch() or
      * getReverseLimitSwitch() method on an existing CANSparkMax object, depending
      * on which direction you would like to limit
-     * 
-     * Limit switches can be configured to one of two polarities:
-     *  com.revrobotics.SparkLimitSwitch.SparkLimitSwitch.Type.kNormallyOpen
-     *  com.revrobotics.SparkLimitSwitch.SparkLimitSwitch.Type.kNormallyClosed
      */
-    m_forwardLimit = m_motor.getForwardLimitSwitch(SparkLimitSwitch.Type.kNormallyClosed);
-    m_reverseLimit = m_motor.getReverseLimitSwitch(SparkLimitSwitch.Type.kNormallyClosed);
-
-    m_stick = new Joystick(0);
+    forwardLimit = motor.getForwardLimitSwitch();
+    reverseLimit = motor.getReverseLimitSwitch();
 
     /**
-     * Limit switches are enabled by default when they are intialized. They can be disabled
-     * by calling enableLimitSwitch(false) on a SparkLimitSwitch object
+     * Limit switches are enabled by default when they are initialized. Using the SPARK MAX 
+     * configuration object the enable state of the forward and reverse limits can stored.
      * 
-     * Limit switches can be reenabled by calling enableLimitSwitch(true)
+     * Limit switches can be also configured to one of two polarities:
+     *  com.revrobotics.spark.config.LimitSwitchConfig.TypekNormallyOpen
+     *  com.revrobotics.spark.config.LimitSwitchConfig.TypekNormallyClosed
      * 
-     * The isLimitSwitchEnabled() method can be used to check if the limit switch is enabled
+     * Changes can then be applied using the configure() method of an existing SPARK MAX
+     * object.  
      */
-    m_forwardLimit.enableLimitSwitch(false);
-    m_reverseLimit.enableLimitSwitch(false);
-    SmartDashboard.putBoolean("Forward Limit Enabled", m_forwardLimit.isLimitSwitchEnabled());
-    SmartDashboard.putBoolean("Reverse Limit Enabled", m_reverseLimit.isLimitSwitchEnabled());
-  }
+    motorConfig.limitSwitch
+      .forwardLimitSwitchEnabled(isForwardLimitEnabled)
+      .forwardLimitSwitchType(forwardLimitNormalState)
+      .reverseLimitSwitchEnabled(isReverseLimitEnabled)
+      .reverseLimitSwitchType(reverseLimitNormalState);
 
-  @Override
-  public void teleopPeriodic() {
-    m_motor.set(m_stick.getY());
+    // Restore defaults and apply changes stored in the configuration object
+    motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
-    // enable/disable limit switches based on value read from SmartDashboard
-    m_forwardLimit.enableLimitSwitch(SmartDashboard.getBoolean("Forward Limit Enabled", false));
-    m_reverseLimit.enableLimitSwitch(SmartDashboard.getBoolean("Reverse Limit Enabled", false));
+    joystick = new Joystick(0);
+
+    // Display the starting values on Smart Dashboard
+    SmartDashboard.putBoolean("Forward Limit Enabled", isForwardLimitEnabled);
+    SmartDashboard.putBoolean("Reverse Limit Enabled", isReverseLimitEnabled);
 
     /**
      * The isPressed() method can be used on a SparkLimitSwitch object to read the state of the switch.
      * 
-     * In this example, the polarity of the switches are set to normally closed. In this case,
+     * In this example, the polarity of the switches are set to normally open. In this case,
      * isPressed() will return true if the switch is pressed. It will also return true if you do not 
      * have a switch connected. isPressed() will return false when the switch is released.
      */
-    SmartDashboard.putBoolean("Forward Limit Switch", m_forwardLimit.isPressed());
-    SmartDashboard.putBoolean("Reverse Limit Switch", m_reverseLimit.isPressed());
+    SmartDashboard.putBoolean("Forward Limit Activated", forwardLimit.isPressed());
+    SmartDashboard.putBoolean("Reverse Limit Activated", reverseLimit.isPressed());
+  }
+
+  @Override
+  public void teleopPeriodic() {
+    motor.set(joystick.getY());
+    // Get the current values of the limit switches from Smart Dashboard
+    boolean fwLimEnabled = SmartDashboard.getBoolean("Forward Limit Enabled", false);
+    boolean revLimEnabled = SmartDashboard.getBoolean("Reverse Limit Enabled", false); 
+
+    // Update SPARK MAX configuration if there are any changes 
+    if(isForwardLimitEnabled != fwLimEnabled) {
+      isForwardLimitEnabled = fwLimEnabled;
+      motorConfig.limitSwitch.forwardLimitSwitchEnabled(isForwardLimitEnabled);
+      SmartDashboard.putBoolean("Forward Limit Enabled", isForwardLimitEnabled);
+    } 
+
+    if(isReverseLimitEnabled != revLimEnabled) {
+      isReverseLimitEnabled = revLimEnabled;
+      motorConfig.limitSwitch.reverseLimitSwitchEnabled(isReverseLimitEnabled);
+      SmartDashboard.putBoolean("Reverse Limit Enabled", isReverseLimitEnabled);
+    }
+
+    // Apply changes (if any) to the SPARK MAX
+    motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    SmartDashboard.putBoolean("Forward Limit Activated", forwardLimit.isPressed());
+    SmartDashboard.putBoolean("Reverse Limit Activated", reverseLimit.isPressed());
   }
 }
