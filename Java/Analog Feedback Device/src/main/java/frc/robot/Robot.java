@@ -7,66 +7,75 @@
 
 package frc.robot;
 
+import com.revrobotics.spark.SparkAnalogSensor;
+import com.revrobotics.spark.SparkClosedLoopController;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.spark.SparkBase.ControlType;
+import com.revrobotics.spark.SparkBase.PersistMode;
+import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
+
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
-import com.revrobotics.SparkAnalogSensor;
-import com.revrobotics.SparkPIDController;
-import com.revrobotics.CANSparkMax;
-import com.revrobotics.CANSparkLowLevel.MotorType;
 
 public class Robot extends TimedRobot {
   
 
-  private static final int deviceID = 1;
-  private CANSparkMax m_motor;
-  private SparkPIDController m_pidController;
+  private static final int deviceID = 2;
+  private SparkMax motor;
+  private SparkMaxConfig motorConfig;
+  private SparkClosedLoopController closedLoopController;
   public double kP, kI, kD, kIz, kFF, kMaxOutput, kMinOutput;
 
   /**
    * A SparkAnalogSensor object is constructed using the GetAnalog() method on an 
-   * existing CANSparkMax object. 
+   * existing SparkMax object. 
    */
-  private SparkAnalogSensor m_analogSensor;
+  private SparkAnalogSensor analogSensor;
 
   @Override
   public void robotInit() {
-    // initialize SPARK MAX with CAN ID
-    m_motor = new CANSparkMax(deviceID, MotorType.kBrushless);
-    m_analogSensor = m_motor.getAnalog(SparkAnalogSensor.Mode.kAbsolute);
-    
-    m_motor.restoreFactoryDefaults();
-
-    /**
-     * In order to use PID functionality for a controller, a SparkPIDController object
-     * is constructed by calling the getPIDController() method on an existing
-     * CANSparkMax object
-     */
-    m_pidController = m_motor.getPIDController();
-  
-    /**
-     * The PID Controller can be configured to use the analog sensor as its feedback
-     * device with the method SetFeedbackDevice() and passing the PID Controller
-     * the SparkAnalogSensor object. 
-     */
-    m_pidController.setFeedbackDevice(m_analogSensor);
-
     // PID coefficients
     kP = 0.1; 
     kI = 1e-4;
-    kD = 1; 
+    kD = 0.00001; 
     kIz = 0; 
     kFF = 0; 
-    kMaxOutput = 1; 
-    kMinOutput = -1;
+    kMaxOutput = 0.5; 
+    kMinOutput = 0.5;
 
-    // set PID coefficients
-    m_pidController.setP(kP);
-    m_pidController.setI(kI);
-    m_pidController.setD(kD);
-    m_pidController.setIZone(kIz);
-    m_pidController.setFF(kFF);
-    m_pidController.setOutputRange(kMinOutput, kMaxOutput);
+
+    // Initialize SPARK MAX with CAN ID
+    motor = new SparkMax(deviceID, MotorType.kBrushless);
+    
+    // Initialize SPARK MAX Config
+    motorConfig = new SparkMaxConfig();
+
+    // Setup closed loop control pid values and analog sensor for the feedback sensor 
+    motorConfig.closedLoop
+      .feedbackSensor(FeedbackSensor.kAnalogSensor)
+      .p(kP)
+      .i(kI)
+      .d(kD)
+      .iZone(kIz)
+      .velocityFF(kFF)
+      .outputRange(kMinOutput, kMaxOutput);
+
+    // Restore defaults and apply our changes
+    motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+
+    // Get analog sensor object for interface for position and velocity values
+    analogSensor = motor.getAnalog();
+    
+
+    /**
+     * In order to use PID functionality for a controller, a SparkClosedLoopController object
+     * is constructed by calling the getClosedLoopController() method on an existing
+     * SparkMax object
+     */
+    closedLoopController = motor.getClosedLoopController();
 
     // display PID coefficients on SmartDashboard
     SmartDashboard.putNumber("P Gain", kP);
@@ -92,15 +101,18 @@ public class Robot extends TimedRobot {
     double rotations = SmartDashboard.getNumber("Set Rotations", 0);
 
     // if PID coefficients on SmartDashboard have changed, write new values to controller
-    if((p != kP)) { m_pidController.setP(p); kP = p; }
-    if((i != kI)) { m_pidController.setI(i); kI = i; }
-    if((d != kD)) { m_pidController.setD(d); kD = d; }
-    if((iz != kIz)) { m_pidController.setIZone(iz); kIz = iz; }
-    if((ff != kFF)) { m_pidController.setFF(ff); kFF = ff; }
+    if((p != kP)) { motorConfig.closedLoop.p(p); kP = p; }
+    if((i != kI)) { motorConfig.closedLoop.i(i); kI = i; }
+    if((d != kD)) { motorConfig.closedLoop.d(d); kD = d; }
+    if((iz != kIz)) { motorConfig.closedLoop.iZone(iz); kIz = iz; }
+    if((ff != kFF)) { motorConfig.closedLoop.velocityFF(ff); kFF = ff; }
     if((max != kMaxOutput) || (min != kMinOutput)) { 
-      m_pidController.setOutputRange(min, max); 
+      motorConfig.closedLoop.outputRange(min, max); 
       kMinOutput = min; kMaxOutput = max; 
     }
+
+    // Apply any PID value changes if any 
+    motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
     /**
      * PIDController objects are commanded to a set point using the 
@@ -112,8 +124,9 @@ public class Robot extends TimedRobot {
      * The second parameter is the control type can be set to one of four 
      * parameters:
      */
+    closedLoopController.setReference(rotations, ControlType.kPosition);
     
     SmartDashboard.putNumber("SetPoint", rotations);
-    SmartDashboard.putNumber("ProcessVariable", m_analogSensor.getPosition());
+    SmartDashboard.putNumber("ProcessVariable", analogSensor.getPosition());
   }
 }
