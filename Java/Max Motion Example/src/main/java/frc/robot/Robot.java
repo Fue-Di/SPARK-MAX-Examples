@@ -35,7 +35,7 @@ import com.revrobotics.spark.config.MAXMotionConfig.MAXMotionPositionMode;
  * way. This is done by generating a motion profile on the fly in SPARK MAX and 
  * controlling the velocity of the motor to follow this profile.
  * 
- * Since REV Smart Motion uses the velocity to track a profile, there are only 
+ * Since REV MaxMotion Motion uses the velocity to track a profile, there are only 
  * two steps required to configure this mode:
  *    1) Tune a velocity PID loop for the mechanism
  *    2) Configure the MAXMotion parameters
@@ -64,7 +64,9 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
-    // Starting PID coefficients
+    /*
+     * Starting PID coefficients
+     */
     kP = 5e-5; 
     kI = 1e-6;
     kD = 0; 
@@ -74,15 +76,57 @@ public class Robot extends TimedRobot {
     kMinOutput = -1;
     maxRPM = 5700;
 
-    // Starting MAXMotion Coefficients
-    maxVel = 2000; // rpm
-    maxAcc = 1500;
+    /*
+     * Starting MAXMotion Coefficients
+     */
+    maxVel = 2000; // RPM
+    maxAcc = 1500; // RPM^2
 
-    // Initialize motor
+    /*
+     * Create a SPARK MAX object with the desired CAN-ID and type of motor connected
+     */
     motor = new SparkMax(deviceID, MotorType.kBrushless);
+
+    /*
+     * Create a SparkBaseConfig object that will queue up any changes we want applied to one or more SPARK MAXs.
+     * The configuration objects use setter functions that allow for chaining to keep things neat as shown below.
+     *  
+     * Changes made in the config will not get applied to the SPARK MAX until the configure() method is called 
+     * from a SPARK MAX object. If a SparkBaseConfig with no changes is passed to the configure() method, the SPARK 
+     * MAX's configuration will remain unchanged.
+     * 
+     * Within the base config, the following can be modified:
+     *    - Follower Mode
+     *    - Voltage Compensation
+     *    - Idle modes
+     *    - Motor inversion settings
+     *    - Closed/Open Ramp Rates
+     *    - Current Limits
+     * 
+     * The base config also contains sub configs that can be modified such as:
+     *    - AbsoluteEncoderConfig
+     *    - AlternateEncoderConfig
+     *    - Analog Sensor Config
+     *    - ClosedLoopConfig
+     *    - EncoderConfig
+     *    - LimitSwitchConfig
+     *    - SoftLimitConfig
+     *    - SignalsConfig (Status Frames)
+     *  
+     * Sub config objects can separately be created, modified and then applied to the base config by calling the apply() method.
+     */
     motorConfig = new SparkMaxConfig();
 
-    // Set PID coefficients and feedback sensor to Primary Encoder
+    /*
+     *  Here we access the closedLoop sub config within the SparkMaxBaseConfig to change the
+     *  feedback sensor and PID values we want by chaining together setter functions.
+     *  This is equivalent to:
+     *    MotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+     *    MotorConfig.closedLoop.p(kP);
+     *    MotorConfig.closedLoop.i(kI);
+     *    ... 
+     *    MotorConfig.closedLoop.outputRange(kMinOutput, kMaxOutput);
+     */
     motorConfig.closedLoop
       .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
       .p(kP)
@@ -91,15 +135,15 @@ public class Robot extends TimedRobot {
       .iZone(kIz)
       .velocityFF(kFF)
       .outputRange(kMinOutput, kMaxOutput);
-    /**
-     * MaxMotion coefficients are set on a SPARK MAX Max Motion Configuration object
+
+    /*
+     * The maximum velocity, acceleration, and allowed error threshold within the
+     * closed loop controller can be adjusted by calling the following methods in the
+     * MaxMotionConfig object within the closedLoop sub config:
      * 
-     * - maxVelocity() will limit the velocity in RPM of
-     * the pid controller in MaxMotion mode
-     * - MaxAccel() will limit the acceleration in RPM^2
-     * of the pid controller in MaxMotion mode
-     * - MaxMotionAllowedClosedLoopError() will set the max allowed
-     * error for the pid controller in MaxMotion mode
+     *    - maxVelocity() will limit the velocity in RPM of the closed loop controller
+     *    - maxAccel() will limit the acceleration in RPM^2 of the closed loop controller
+     *    - allowedClosedLoopError() will set the max allowed error for the closed loop controller
      */
     motorConfig.closedLoop.maxMotion
       .allowedClosedLoopError(0.1)
@@ -107,14 +151,39 @@ public class Robot extends TimedRobot {
       .maxVelocity(maxVel)
       .positionMode(MAXMotionPositionMode.kMAXMotionTrapezoidal);
 
-    // Restore defaults and apply the configuration values from the SPARK MAX configuration object
+    /*
+     * After making all the changes in the SparkBaseConfig object (motorConfig in this case), 
+     * we apply them to the SPARK MAX by calling the configure() method.
+     * 
+     * The first argument passed is the SparkBaseConfig object containing any parameter changes we 
+     * want applied
+     * 
+     * The second argument passed is the ResetMode which uses: 
+     *    - kResetSafeParameters: Restore defaults before applying parameter changes
+     *    - kNoResetSafeParameters:  Don't Restore defaults before applying parameter changes
+     * 
+     * The third argument passed is the PersistMode which uses:
+     *    - kNoPersistParameters: Parameters will be not persist over power cycles
+     *    - kPersistParameters: Parameters will persist over power cycles
+     * 
+     * In this case we will be restoring defaults, then applying our parameter values that will not 
+     * persist over power cycles.
+     */
     motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
-    // Create PID controller and encoder objects
+    /*
+     * Create closed loop controller object that is used for closed loop control
+     */
     closedLoopController = motor.getClosedLoopController();
+    /*
+     * Create encoder object (Primary Encoder) which interfaces with SPARK MAX 
+     * to get position and velocity values 
+     */
     encoder = motor.getEncoder();
 
-    // Display PID coefficients on SmartDashboard
+    /*
+     *  Display Starting PID coefficients and MAXMotion coefficients
+     */
     SmartDashboard.putNumber("P Gain", kP);
     SmartDashboard.putNumber("I Gain", kI);
     SmartDashboard.putNumber("D Gain", kD);
@@ -123,20 +192,23 @@ public class Robot extends TimedRobot {
     SmartDashboard.putNumber("Max Output", kMaxOutput);
     SmartDashboard.putNumber("Min Output", kMinOutput);
 
-    // Display Max Motion coefficients
     SmartDashboard.putNumber("Max Velocity", maxVel);
     SmartDashboard.putNumber("Max Acceleration", maxAcc);
     SmartDashboard.putNumber("Allowed Closed Loop Error", allowedErr);
     SmartDashboard.putNumber("Set Position", 0);
     SmartDashboard.putNumber("Set Velocity", 0);
 
-    // Button to toggle between velocity and position Maxmotion modes
+    /*
+     * Display a button to toggle between velocity and position MAXMotion modes
+     */
     SmartDashboard.putBoolean("Mode", true);
   }
 
   @Override
   public void teleopPeriodic() {
-    // Read PID coefficients from SmartDashboard
+    /*
+     * Read PID coefficients from SmartDashboard for any PID coefficient changes
+     */
     double p = SmartDashboard.getNumber("P Gain", 0);
     double i = SmartDashboard.getNumber("I Gain", 0);
     double d = SmartDashboard.getNumber("D Gain", 0);
@@ -150,7 +222,9 @@ public class Robot extends TimedRobot {
     boolean mode = SmartDashboard.getBoolean("Mode", false);
     double setPoint, processVariable;
 
-    // If PID coefficients on SmartDashboard have changed, write new values to controller
+    /*
+     * If there are any PID or MAXMotion parameter changes, update variables tracking the current value
+     */
     if((p != kP)) { motorConfig.closedLoop.p(p); kP = p; }
     if((i != kI)) { motorConfig.closedLoop.i(i); kI = i; }
     if((d != kD)) { motorConfig.closedLoop.d(d); kD = d; }
@@ -164,12 +238,14 @@ public class Robot extends TimedRobot {
     if((maxA != maxAcc)) { motorConfig.closedLoop.maxMotion.maxAcceleration(maxA); maxAcc = maxA; }
     if((allE != allowedErr)) { motorConfig.closedLoop.maxMotion.allowedClosedLoopError(allE); allowedErr = allE; }
 
+    /*
+     * Apply any changes to the SPARK MAX if any
+     */
     motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
     /**
-     * As with other PID modes, MAXMotion is set by calling the
-     * setReference() method on an existing pid object and setting
-     * the control type to: 
+     * As with other PID modes, MAXMotion is set by calling the setReference() method on an 
+     * existing closed loop control object and setting the control type to: 
      *    - kMAXMotionVelocityControl
      *    - kMAXMotionPositionControl 
      */
@@ -183,6 +259,9 @@ public class Robot extends TimedRobot {
       processVariable = encoder.getPosition();
     }
     
+    /*
+     * Display our current setpoint target, processVariable, and motor applied output
+     */
     SmartDashboard.putNumber("SetPoint", setPoint);
     SmartDashboard.putNumber("Process Variable", processVariable);
     SmartDashboard.putNumber("Output", motor.getAppliedOutput());
