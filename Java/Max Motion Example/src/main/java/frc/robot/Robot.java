@@ -81,6 +81,7 @@ public class Robot extends TimedRobot {
      */
     maxVel = 2000; // RPM
     maxAcc = 1500; // RPM^2
+    allowedErr = 0.1;
 
     /*
      * Create a SPARK MAX object with the desired CAN-ID and type of motor connected
@@ -146,7 +147,7 @@ public class Robot extends TimedRobot {
      *    - allowedClosedLoopError() will set the max allowed error for the closed loop controller
      */
     motorConfig.closedLoop.maxMotion
-      .allowedClosedLoopError(0.1)
+      .allowedClosedLoopError(allowedErr)
       .maxAcceleration(maxAcc)
       .maxVelocity(maxVel)
       .positionMode(MAXMotionPositionMode.kMAXMotionTrapezoidal);
