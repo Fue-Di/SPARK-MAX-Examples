@@ -29,40 +29,78 @@ public class Robot extends TimedRobot {
 
   @Override
   public void robotInit() {
-  /**
-   * SPARK MAX controllers are intialized over CAN by constructing a SparkMax object
-   * 
-   * The CAN ID, which can be configured using the SPARK MAX Client, is passed as the
-   * first parameter
-   * 
-   * The motor type is passed as the second parameter. Motor type can either be:
-   *  com.revrobotics.spark.SparkLowLevel.MotorType.kBrushless
-   *  com.revrobotics.spark.SparkLowLevel.MotorType.kBrushed
-   * 
-   * The example below initializes four brushless motors with CAN IDs 1 and 2. Change
-   * these parameters to match your setup
-   */
+    /*
+     * Create two SPARK MAX objects by passing in the desired CAN-IDs and types of motors connected
+     * Motor types can be either:
+     *    - MotorType.kBrushless
+     *    - MotorType.kBrushed
+     */
     leftMotor = new SparkMax(leftDeviceID, MotorType.kBrushless);
     rightMotor = new SparkMax(rightDeviceID, MotorType.kBrushless);
 
 
     /*
-     * Create config with no changes
+     * Create a SparkBaseConfig object that will queue up any changes we want applied to one or more SPARK MAXs.
+     * The configuration objects use setter functions that allow for chaining to keep things neat as shown below.
+     *  
+     * Changes made in the config will not get applied to the SPARK MAX until the configure() method is called 
+     * from a SPARK MAX object. If a SparkBaseConfig with no changes is passed to the configure() method, the SPARK 
+     * MAX's configuration will remain unchanged.
+     * 
+     * Within the base config, the following can be modified:
+     *    - Follower Mode
+     *    - Voltage Compensation
+     *    - Idle modes
+     *    - Motor inversion settings
+     *    - Closed/Open Ramp Rates
+     *    - Current Limits
+     * 
+     * The base config also contains sub configs that can be modified such as:
+     *    - AbsoluteEncoderConfig
+     *    - AlternateEncoderConfig
+     *    - Analog Sensor Config
+     *    - ClosedLoopConfig
+     *    - EncoderConfig
+     *    - LimitSwitchConfig
+     *    - SoftLimitConfig
+     *    - SignalsConfig (Status Frames)
+     *  
+     * Sub config objects can separately be created, modified and then applied to the base config by calling the apply() method.
      */
     SparkMaxConfig emptyConfig = new SparkMaxConfig();
 
     /*
-     * Reset both the left motor and right motor to factory defaults that will not persist over power cycles.  
+     * After making all the changes (none in this example) in the SparkBaseConfig object, 
+     * we apply them to the SPARK MAX by calling the configure() method.
+     * 
+     * The first argument passed is the SparkBaseConfig object containing any parameter changes we 
+     * want applied
+     * 
+     * The second argument passed is the ResetMode which uses: 
+     *    - kResetSafeParameters: Restore defaults before applying parameter changes
+     *    - kNoResetSafeParameters:  Don't Restore defaults before applying parameter changes
+     * 
+     * The third argument passed is the PersistMode which uses:
+     *    - kNoPersistParameters: Parameters will be not persist over power cycles
+     *    - kPersistParameters: Parameters will persist over power cycles
+     * 
+     * In this case we will only restore defaults without persisting across power cycles
      */
     leftMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     rightMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
+    /*
+     * Create differential drive object to manage the output to the left and right motors
+     */
     myRobot = new DifferentialDrive(leftMotor, rightMotor);
 
+    /*
+     * Create controller interface for motor inputs
+     */
     controller = new PS4Controller(0);
 
     /*
-     * Display Default values to setup SmartDashboard
+     * Display default applied output values to setup SmartDashboard tiles
      */
 
      SmartDashboard.putNumber("Left Motor Applied Output", 0.0);
@@ -71,6 +109,10 @@ public class Robot extends TimedRobot {
 
   @Override
   public void teleopPeriodic() {
+    /*
+     * Update the output to the left and right motors based on the position of the left and right 
+     * joysticks
+     */
     myRobot.tankDrive(controller.getLeftY(), controller.getRightY());
 
     /*
