@@ -38,7 +38,6 @@ public class Robot extends TimedRobot {
     leftMotor = new SparkMax(leftDeviceID, MotorType.kBrushless);
     rightMotor = new SparkMax(rightDeviceID, MotorType.kBrushless);
 
-
     /*
      * Create a SparkBaseConfig object that will queue up any changes we want applied to one or more SPARK MAXs.
      * The configuration objects use setter functions that allow for chaining to keep things neat as shown below.
@@ -84,7 +83,7 @@ public class Robot extends TimedRobot {
      *    - kNoPersistParameters: Parameters will be not persist over power cycles
      *    - kPersistParameters: Parameters will persist over power cycles
      * 
-     * In this case we will only restore defaults without persisting across power cycles
+     * In this case we will only restore defaults without the changes persisting across power cycles
      */
     leftMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     rightMotor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
@@ -102,7 +101,6 @@ public class Robot extends TimedRobot {
     /*
      * Display default applied output values to setup SmartDashboard tiles
      */
-
      SmartDashboard.putNumber("Left Motor Applied Output", 0.0);
      SmartDashboard.putNumber("Right Motor Applied Output", 0.0);
   }
@@ -111,7 +109,7 @@ public class Robot extends TimedRobot {
   public void teleopPeriodic() {
     /*
      * Update the output to the left and right motors based on the position of the left and right 
-     * joysticks
+     * joystick y-axis values
      */
     myRobot.tankDrive(controller.getLeftY(), controller.getRightY());
 
