@@ -85,6 +85,9 @@ public class Robot extends TimedRobot {
 
     /*
      * Create a SPARK MAX object with the desired CAN-ID and type of motor connected
+     * MotorType can be either:
+     *    - MotorType.kBrushless
+     *    - MotorType.kBrushed
      */
     motor = new SparkMax(deviceID, MotorType.kBrushless);
 
@@ -173,12 +176,13 @@ public class Robot extends TimedRobot {
     motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
     /*
-     * Create closed loop controller object that is used for closed loop control
+     * Create closed loop controller object that is used for PID functionality
      */
     closedLoopController = motor.getClosedLoopController();
+
     /*
-     * Create encoder object (Primary Encoder) which interfaces with SPARK MAX 
-     * to get position and velocity values 
+     * Create encoder object by calling the getEncoder() method. Methods like getPosition() and
+     * getVelocity() to get position and velocity values from the SPARK MAX Primary Encoder
      */
     encoder = motor.getEncoder();
 
@@ -240,7 +244,7 @@ public class Robot extends TimedRobot {
     if((allE != allowedErr)) { motorConfig.closedLoop.maxMotion.allowedClosedLoopError(allE); allowedErr = allE; }
 
     /*
-     * Apply any changes to the SPARK MAX if any
+     * Apply any changes to the SPARK MAX
      */
     motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
@@ -248,7 +252,10 @@ public class Robot extends TimedRobot {
      * As with other PID modes, MAXMotion is set by calling the setReference() method on an 
      * existing closed loop control object and setting the control type to: 
      *    - kMAXMotionVelocityControl
-     *    - kMAXMotionPositionControl 
+     *    - kMAXMotionPositionControl
+     * 
+     * We also get the current position or velocity of the motor by calling the getPosition()
+     * or getVelocity() encoder methods depending on the mode 
      */
     if(mode) {
       setPoint = SmartDashboard.getNumber("Set Velocity", 0);
