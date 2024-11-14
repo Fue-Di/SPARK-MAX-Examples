@@ -31,12 +31,6 @@ public class Robot extends TimedRobot {
   private SparkMaxConfig motorConfig;
   private SparkClosedLoopController closedLoopController;
   public double kP, kI, kD, kIz, kFF, kMaxOutput, kMinOutput;
-
-  /**
-   * An alternate encoder object is constructed using the GetAlternateEncoder() 
-   * method on an existing SparkMax object. If using a REV Through Bore 
-   * Encoder, the counts per revolution should be set to 8192.
-   */
   private RelativeEncoder alternateEncoder;
 
   @Override
@@ -52,26 +46,62 @@ public class Robot extends TimedRobot {
     kMaxOutput = 0.2;
     kMinOutput = -0.2;
 
-    /*  
-     * Initialize SPARK MAX with CAN ID
+    /*
+     * Create a SPARK MAX object with the desired CAN-ID and type of motor connected
+     * MotorType can be either:
+     *    - MotorType.kBrushless
+     *    - MotorType.kBrushed
      */
     motor = new SparkMax(kCanID, kMotorType);
 
     /*
-     * Initialize the motor config to set settings we want
+     * Create a SparkBaseConfig object that will queue up any changes we want applied to one or more SPARK MAXs.
+     * The configuration objects use setter functions that allow for chaining to keep things neat as shown below.
+     *  
+     * Changes made in the config will not get applied to the SPARK MAX until the configure() method is called 
+     * from a SPARK MAX object. If a SparkBaseConfig with no changes is passed to the configure() method, the SPARK 
+     * MAX's configuration will remain unchanged.
+     * 
+     * Within the base config, the following can be modified:
+     *    - Follower Mode
+     *    - Voltage Compensation
+     *    - Idle modes
+     *    - Motor inversion settings
+     *    - Closed/Open Ramp Rates
+     *    - Current Limits
+     * 
+     * The base config also contains sub configs that can be modified such as:
+     *    - AbsoluteEncoderConfig
+     *    - AlternateEncoderConfig
+     *    - Analog Sensor Config
+     *    - ClosedLoopConfig
+     *    - EncoderConfig
+     *    - LimitSwitchConfig
+     *    - SoftLimitConfig
+     *    - SignalsConfig (Status Frames)
+     *  
+     * Sub config objects can separately be created, modified and then applied to the base config by calling the apply() method.
      */
     motorConfig = new SparkMaxConfig();
 
-
     /*
-     *  Adjust the alternate encoder config with the encoder's counts per revolution
+     * Using the alternateEncoder sub config within the  we can configure the alternate encoder's 
+     * counts per revolution by calling the countsPerRevolution() setter function.
+     * 
+     * Other alternate encoder parameters like position or velocity conversion factors can be changed 
+     * through their respective setter functions.
      */
     motorConfig.alternateEncoder.countsPerRevolution(kCPR);
 
-    /**
-     * By default, the closed loop controller will use the primary encoder sensor for its
-     * feedback device. Instead, we can set the feedback device to the alternate
-     * encoder. We also setup the PID values we want to use in the closed
+    /*
+     * Here we access the closedLoop sub config within the SparkBaseConfig object to change the
+     * feedback sensor and PID values we want by chaining together setter functions. This is 
+     * equivalent to:
+     *    MotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
+     *    MotorConfig.closedLoop.p(kP);
+     *    MotorConfig.closedLoop.i(kI);
+     *    ... 
+     *    MotorConfig.closedLoop.outputRange(kMinOutput, kMaxOutput);
      */
     motorConfig.closedLoop
       .feedbackSensor(FeedbackSensor.kAlternateOrExternalEncoder)
@@ -83,13 +113,30 @@ public class Robot extends TimedRobot {
       .outputRange(kMinOutput, kMaxOutput);
 
     /*
-     * Reset to defaults and apply the changes to the motor 
+     * After making all the changes in the SparkBaseConfig object (motorConfig in this case), 
+     * we apply them to the SPARK MAX by calling the configure() method.
+     * 
+     * The first argument passed is the SparkBaseConfig object containing any parameter changes we 
+     * want applied
+     * 
+     * The second argument passed is the ResetMode which uses: 
+     *    - kResetSafeParameters: Restore defaults before applying parameter changes
+     *    - kNoResetSafeParameters:  Don't Restore defaults before applying parameter changes
+     * 
+     * The third argument passed is the PersistMode which uses:
+     *    - kNoPersistParameters: Parameters will be not persist over power cycles
+     *    - kPersistParameters: Parameters will persist over power cycles
+     * 
+     * In this case we will be restoring defaults, then applying our parameter values without having
+     * them persisting over power cycles.
      */
     motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
-    /*
-     * Get Alternate Encoder object with getAlternateEncoder() to be able to read the position and velocity values
-     */
+  /*
+   * An alternate encoder object is constructed using the GetAlternateEncoder() 
+   * method on an existing SparkMax object. If using a REV Through Bore 
+   * Encoder, the counts per revolution should be set to 8192.
+   */
     alternateEncoder = motor.getAlternateEncoder();
     
     /**
@@ -100,7 +147,7 @@ public class Robot extends TimedRobot {
     closedLoopController = motor.getClosedLoopController();
 
     /*
-     * Display PID coefficients on SmartDashboard
+     *  Display Starting PID coefficients
      */
     SmartDashboard.putNumber("P Gain", kP);
     SmartDashboard.putNumber("I Gain", kI);
@@ -116,7 +163,7 @@ public class Robot extends TimedRobot {
   @Override
   public void teleopPeriodic() {
     /*
-     * Read PID coefficients from SmartDashboard
+     * Read PID coefficients from SmartDashboard for any PID coefficient changes
      */
     double p = SmartDashboard.getNumber("P Gain", 0);
     double i = SmartDashboard.getNumber("I Gain", 0);
@@ -128,7 +175,7 @@ public class Robot extends TimedRobot {
     double rotations = SmartDashboard.getNumber("Set Rotations", 0);
 
     /*
-     * If the PID coefficients on SmartDashboard have changed, write the new values to the controller
+     * If there are any PID value changes, update variables tracking the current value
      */
     if((p != kP)) { motorConfig.closedLoop.p(p); kP = p; }
     if((i != kI)) { motorConfig.closedLoop.i(i); kI = i; }
@@ -141,8 +188,7 @@ public class Robot extends TimedRobot {
     }
 
     /*
-     * Reconfigure the motor PID values if they have been adjusted. In the case that no new changes are made,
-     * nothing is sent on the CAN bus.
+     * Apply any changes to the SPARK MAX
      */
     motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
@@ -162,6 +208,9 @@ public class Robot extends TimedRobot {
      */
     closedLoopController.setReference(rotations, SparkMax.ControlType.kPosition);
     
+    /*
+     * Display our current setpoint target and processVariable
+     */
     SmartDashboard.putNumber("SetPoint", rotations);
     SmartDashboard.putNumber("ProcessVariable", alternateEncoder.getPosition());
   }
