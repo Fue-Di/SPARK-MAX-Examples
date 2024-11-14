@@ -22,7 +22,7 @@ import com.revrobotics.spark.config.ClosedLoopConfig.FeedbackSensor;
 
 /**
  * This is a demo program showing the use of the RobotDrive class, specifically
- * it contains the code necessary to operate a robot with tank drive.
+ * it contains the code necessary to operate a robot with velocity PID Control.
  */
 public class Robot extends TimedRobot {
   private Joystick stick;
@@ -51,6 +51,9 @@ public class Robot extends TimedRobot {
 
     /*
      * Create a SPARK MAX object with the desired CAN-ID and type of motor connected
+     * MotorType can be either:
+     *    - MotorType.kBrushless
+     *    - MotorType.kBrushed
      */
     motor = new SparkMax(deviceID, MotorType.kBrushless);
 
@@ -127,13 +130,12 @@ public class Robot extends TimedRobot {
      * Create closed loop controller object that is used for PID functionality
      */
     closedLoopController = motor.getClosedLoopController();
-
+    
     /*
-     * Create encoder object (Primary Encoder) which interfaces with SPARK MAX 
-     * to get position and velocity values 
+     * Create encoder object by calling the getEncoder() method. Methods like getPosition() and
+     * getVelocity() to get position and velocity values from the SPARK MAX Primary Encoder
      */
     encoder = motor.getEncoder();
-
 
     /*
      *  Display Starting PID coefficients
@@ -161,7 +163,7 @@ public class Robot extends TimedRobot {
     double min = SmartDashboard.getNumber("Min Output", 0);
 
     /*
-     * If there are any PID, update variables tracking the current value
+     * If there are any PID value changes, update variables tracking the current value
      */
     if((p != kP)) { motorConfig.closedLoop.p(p); kP = p; }
     if((i != kI)) { motorConfig.closedLoop.i(i); kI = i; }
@@ -179,7 +181,7 @@ public class Robot extends TimedRobot {
     motor.configure(motorConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
 
     /*
-     * For simplicity, scale up joystick value(-1 to 1) to the max RPM
+     * For simplicity, scale up joystick value(-1 to 1) to the max RPM for target setpoint
      */
     double setPoint = stick.getY()*maxRPM;
 
