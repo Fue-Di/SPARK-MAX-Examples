@@ -79,10 +79,9 @@ public class Robot extends TimedRobot {
      *    - kNoPersistParameters: Parameters will be not persist over power cycles
      *    - kPersistParameters: Parameters will persist over power cycles
      * 
-     * In this case we will be restoring defaults, then applying our parameter values that will not 
-     * persist over power cycles.
+     * In this case, we will be restoring defaults without the change persisting over power cycles.
      */
-    motor.configure(emptyConfig, ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    motor.configure(emptyConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
 
     /*
      * Create encoder object by calling the getEncoder() method. Methods like getPosition() and
