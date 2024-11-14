@@ -105,7 +105,7 @@ public class Robot extends TimedRobot {
      * In this case we will be restoring defaults, then applying our parameter values that will not 
      * persist over power cycles and storing the status of the configuration operation.
      */
-    REVLibError status = motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+    REVLibError status = motor.configure(motorConfig, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     
     if(status != REVLibError.kOk) {
       /*
