@@ -40,7 +40,7 @@ public class Robot extends TimedRobot {
 
     /*
      * Create a SparkBaseConfig object that will queue up any changes we want applied to one or more SPARK MAXs.
-     * The configuration objects use setter functions that allow for chaining to keep things neat as shown below.
+     * The configuration objects use setter functions that allow for chaining.
      *  
      * Changes made in the config will not get applied to the SPARK MAX until the configure() method is called 
      * from a SPARK MAX object. If a SparkBaseConfig with no changes is passed to the configure() method, the SPARK 
