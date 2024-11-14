@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 public class Robot extends TimedRobot {
   
 
-  private static final int deviceID = 2;
+  private static final int deviceID = 1;
   private SparkMax motor;
   private SparkMaxConfig motorConfig;
   private SparkClosedLoopController closedLoopController;
