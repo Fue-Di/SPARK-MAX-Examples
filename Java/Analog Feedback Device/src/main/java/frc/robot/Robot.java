@@ -82,7 +82,7 @@ public class Robot extends TimedRobot {
     motorConfig = new SparkMaxConfig();
 
     /*
-     *  Here we access the closedLoop sub config within the SparkMaxBaseConfig to change the
+     *  Here we access the closedLoop sub config within the SparkBaseConfig to change the
      *  feedback sensor and PID values we want by chaining together setter functions.
      *  This is equivalent to:
      *    MotorConfig.closedLoop.feedbackSensor(FeedbackSensor.kPrimaryEncoder);
