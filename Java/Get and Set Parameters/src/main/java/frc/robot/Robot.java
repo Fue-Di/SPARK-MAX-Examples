@@ -68,7 +68,7 @@ public class Robot extends TimedRobot {
     motorConfig = new SparkMaxConfig();
 
     /*
-     * Use SparkMaxBaseConfig to configure the motor idle mode to kCoast and inversion value to false.
+     * Use SparkBaseConfig to configure the motor idle mode to kCoast and inversion value to false.
      * There are two idle modes to choose from:
      *    - IdleMode.kBrake : Will short the phases of the motor to stop the rotor immediately and 
      *                        resist change
