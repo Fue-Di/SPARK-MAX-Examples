@@ -80,7 +80,7 @@ public class Robot extends TimedRobot {
       .inverted(false);
 
     /*
-     * Use the EncoderConfig sub config to configure the position conversion factor
+     * Use the encoder sub config to configure the position conversion factor
      * This could be used to scale or convert the position value to a different metric
      * other than revolutions
      */
